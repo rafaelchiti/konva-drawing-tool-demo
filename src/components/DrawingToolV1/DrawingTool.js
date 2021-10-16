@@ -12,18 +12,29 @@ import {
 import { Box } from "src/components/Box";
 import { atom, useAtom } from "jotai";
 
-export const DrawingTool = () => {
-  const { currentTool } = useTools();
+const useDrawingCore = () => {
   const [lines, setLines] = React.useState([]);
-  const isDrawing = React.useRef(false);
+  const isDrawingRef = React.useRef(false);
+
+  return {
+    isDrawingRef,
+    lines,
+    setLines,
+  };
+};
+
+export const DrawingTool = () => {
+  const stageRef = React.useRef();
+  const { currentTool } = useTools();
+  const { lines, setLines, isDrawingRef } = useDrawingCore();
 
   const handleMouseDown = React.useCallback(
     (e) => {
       if (currentTool !== TOOLS.PEN && currentTool !== TOOLS.ERASER) {
-        isDrawing.current = false;
+        isDrawingRef.current = false;
         return;
       }
-      isDrawing.current = true;
+      isDrawingRef.current = true;
       const pos = e.target.getStage().getPointerPosition();
       console.log("Tool:", currentTool);
       setLines([...lines, { tool: currentTool, points: [pos.x, pos.y] }]);
@@ -34,7 +45,7 @@ export const DrawingTool = () => {
   const handleMouseMove = React.useCallback(
     (e) => {
       // no drawing - skipping
-      if (!isDrawing.current) {
+      if (!isDrawingRef.current) {
         return;
       }
       const stage = e.target.getStage();
@@ -51,48 +62,56 @@ export const DrawingTool = () => {
   );
 
   const handleMouseUp = () => {
-    isDrawing.current = false;
+    isDrawingRef.current = false;
   };
 
   // Stage - is a div wrapper
   // Layer - is an actual 2d canvas element, so you can have several layers inside the stage
   // Rect and Circle are not DOM elements. They are 2d shapes on canvas
   return (
-    <Box display="flex">
-      <Box
-        name="CanvasWrapper"
-        border="1px solid #483D8B"
-        width="500px"
-        height="500px"
-      >
-        <Stage
-          width={500}
-          height={500}
-          onMouseDown={handleMouseDown}
-          onMousemove={handleMouseMove}
-          onMouseup={handleMouseUp}
+    <Box>
+      V1 - Basic Demo
+      <Box display="flex">
+        <Box
+          name="CanvasWrapper"
+          border="1px solid #483D8B"
+          width="500px"
+          height="500px"
         >
-          <Layer>
-            <URLImageNode src={LION_IMAGE_URL} />
-            {lines.map((line, i) => (
-              <Line
-                key={i}
-                points={line.points}
-                stroke="#df4b26"
-                strokeWidth={line.tool === TOOLS.PEN ? 10 : 30}
-                tension={0.5}
-                lineCap="round"
-                globalCompositeOperation={
-                  line.tool === TOOLS.ERASER ? "destination-out" : "source-over"
-                }
-              />
-            ))}
-          </Layer>
-        </Stage>
-      </Box>
+          <Stage
+            ref={stageRef}
+            width={500}
+            height={500}
+            onMouseDown={handleMouseDown}
+            onMousemove={handleMouseMove}
+            onMouseup={handleMouseUp}
+          >
+            <Layer>
+              {lines.map((line, i) => (
+                <Line
+                  key={i}
+                  points={line.points}
+                  stroke="#df4b26"
+                  strokeWidth={line.tool === TOOLS.PEN ? 10 : 30}
+                  tension={0.5}
+                  lineCap="round"
+                  globalCompositeOperation={
+                    line.tool === TOOLS.ERASER
+                      ? "destination-out"
+                      : "source-over"
+                  }
+                />
+              ))}
+            </Layer>
+            <Layer>
+              <URLImageNode src={LION_IMAGE_URL} />
+            </Layer>
+          </Stage>
+        </Box>
 
-      <Box paddingLeft="10px">
-        <ToolsPanel />
+        <Box paddingLeft="10px">
+          <ToolsPanel />
+        </Box>
       </Box>
     </Box>
   );
@@ -230,9 +249,8 @@ const URLImageNode = ({ src, x = 50, y = 50 }) => {
   return (
     <>
       <Image
-        onClick={() => {
+        onClick={(event) => {
           if (currentTool !== TOOLS.POINTER) return;
-
           setSelected(!isSelected);
         }}
         ref={shapeRef}

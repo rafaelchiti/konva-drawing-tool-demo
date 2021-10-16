@@ -1,4 +1,11 @@
-export const Box = ({ name, children, preset, onClick, ...styles }) => {
+export const Box = ({
+  name,
+  children,
+  preset,
+  onClick,
+  otherProps,
+  ...styles
+}) => {
   const presetStyles = PRESETS[preset];
 
   return (
@@ -6,6 +13,7 @@ export const Box = ({ name, children, preset, onClick, ...styles }) => {
       data-name={name}
       onClick={onClick}
       style={{ ...presetStyles, ...styles }}
+      {...otherProps}
     >
       {children}
     </div>
