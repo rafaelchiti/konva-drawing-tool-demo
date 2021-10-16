@@ -2,7 +2,7 @@ import dynamic from "next/dynamic";
 
 const AsyncDrawingTool = dynamic(
   () =>
-    import("src/components/DrawingTool").then((module) => module.DrawingTool),
+    import("src/components/DrawingToolV1").then((module) => module.DrawingTool),
   {
     ssr: false,
   }
