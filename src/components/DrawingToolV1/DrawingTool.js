@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Stage, Layer, Rect, Circle, Line, Text } from "react-konva";
+import { Stage, Layer, Rect, Circle, Line, Text, Image } from "react-konva";
 import { Box } from "src/components/Box";
 import { atom, useAtom } from "jotai";
 
@@ -64,6 +64,7 @@ export const DrawingTool = () => {
           onMouseup={handleMouseUp}
         >
           <Layer>
+            <URLImageNode src={LION_IMAGE_URL} />
             {lines.map((line, i) => (
               <Line
                 key={i}
@@ -155,3 +156,57 @@ const useTools = () => {
 };
 
 const LION_IMAGE_URL = "https://konvajs.org/assets/lion.png";
+
+//
+//
+// =======================================================
+// IMAGE
+//
+//
+const URLImageNode = ({ src, x = 50, y = 50 }) => {
+  const [image, setImage] = React.useState(null);
+  const imageNodeRef = React.useRef();
+
+  const handleLoad = React.useCallback(() => {
+    // after setState react-konva will update canvas and redraw the layer
+    // because "image" property is changed
+    setImage(imageNodeRef.current);
+    // if you keep same image object during source updates
+    // you will have to update layer manually:
+    // this.imageNode.getLayer().batchDraw();
+  }, [imageNodeRef]);
+
+  const loadImage = React.useCallback(() => {
+    // save to "this" to remove "load" handler on unmount
+    imageNodeRef.current = new window.Image();
+    imageNodeRef.current.src = src;
+    imageNodeRef.current.addEventListener("load", handleLoad);
+  }, [handleLoad, src]);
+
+  // Did Mount
+  React.useEffect(() => {
+    loadImage();
+    return () => {
+      imageNodeRef.current.removeEventListener("load", this.handleLoad);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  React.useEffect(() => {
+    if (src) {
+      loadImage();
+    }
+  }, [loadImage, src]);
+
+  return (
+    <Image
+      alt=""
+      x={x}
+      y={y}
+      image={image}
+      // ref={(node) => {
+      //   this.imageNode = node;
+      // }}
+    />
+  );
+};
