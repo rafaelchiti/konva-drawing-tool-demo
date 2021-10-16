@@ -1,5 +1,14 @@
 import * as React from "react";
-import { Stage, Layer, Rect, Circle, Line, Text, Image } from "react-konva";
+import {
+  Stage,
+  Layer,
+  Rect,
+  Circle,
+  Line,
+  Text,
+  Image,
+  Transformer,
+} from "react-konva";
 import { Box } from "src/components/Box";
 import { atom, useAtom } from "jotai";
 
@@ -164,8 +173,12 @@ const LION_IMAGE_URL = "https://konvajs.org/assets/lion.png";
 //
 //
 const URLImageNode = ({ src, x = 50, y = 50 }) => {
+  const { currentTool } = useTools();
+
   const [image, setImage] = React.useState(null);
   const imageNodeRef = React.useRef();
+
+  const [drawValues, setDrawValues] = React.useState({ x: x, y: y });
 
   const handleLoad = React.useCallback(() => {
     // after setState react-konva will update canvas and redraw the layer
@@ -187,7 +200,7 @@ const URLImageNode = ({ src, x = 50, y = 50 }) => {
   React.useEffect(() => {
     loadImage();
     return () => {
-      imageNodeRef.current.removeEventListener("load", this.handleLoad);
+      imageNodeRef.current.removeEventListener("load", handleLoad);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -198,15 +211,68 @@ const URLImageNode = ({ src, x = 50, y = 50 }) => {
     }
   }, [loadImage, src]);
 
+  // Transformer
+  const shapeRef = React.useRef();
+  const transformerRef = React.useRef();
+  const [isSelected, setSelected] = React.useState(false);
+  React.useEffect(() => {
+    if (isSelected) {
+      // we need to attach transformer manually
+      transformerRef.current.nodes([shapeRef.current]);
+      transformerRef.current.getLayer().batchDraw();
+    }
+  }, [isSelected]);
+
+  React.useEffect(() => {
+    if (currentTool !== TOOLS.POINTER) setSelected(false);
+  }, [currentTool]);
+
   return (
-    <Image
-      alt=""
-      x={x}
-      y={y}
-      image={image}
-      // ref={(node) => {
-      //   this.imageNode = node;
-      // }}
-    />
+    <>
+      <Image
+        onClick={() => {
+          if (currentTool !== TOOLS.POINTER) return;
+
+          setSelected(!isSelected);
+        }}
+        ref={shapeRef}
+        draggable={currentTool === TOOLS.POINTER}
+        onDragEnd={(e) => {
+          setDrawValues({
+            ...drawValues,
+            x: e.target.x(),
+            y: e.target.y(),
+          });
+        }}
+        alt=""
+        x={drawValues.x}
+        y={drawValues.y}
+        width={drawValues.width}
+        height={drawValues.height}
+        image={image}
+        onTransformEnd={(e) => {
+          // transformer is changing scale of the node
+          // and NOT its width or height
+          // but in the store we have only width and height
+          // to match the data better we will reset scale on transform end
+          const node = shapeRef.current;
+          const scaleX = node.scaleX();
+          const scaleY = node.scaleY();
+
+          // we will reset it back
+          node.scaleX(1);
+          node.scaleY(1);
+          setDrawValues({
+            ...drawValues,
+            x: node.x(),
+            y: node.y(),
+            // set minimal value
+            width: Math.max(5, node.width() * scaleX),
+            height: Math.max(node.height() * scaleY),
+          });
+        }}
+      />
+      {isSelected && <Transformer ref={transformerRef} />}
+    </>
   );
 };
