@@ -56,6 +56,7 @@ export const DrawingTool = () => {
 
       // replace last
       lines.splice(lines.length - 1, 1, lastLine);
+
       setLines(lines.concat());
     },
     [lines]
@@ -82,9 +83,12 @@ export const DrawingTool = () => {
             ref={stageRef}
             width={500}
             height={500}
-            onMouseDown={handleMouseDown}
-            onMousemove={handleMouseMove}
-            onMouseup={handleMouseUp}
+            // onMouseDown={handleMouseDown}
+            // onMousemove={handleMouseMove}
+            // onMouseup={handleMouseUp}
+            onPointerDown={handleMouseDown}
+            onPointerMove={handleMouseMove}
+            onPointerUp={handleMouseUp}
           >
             <Layer>
               {lines.map((line, i) => (
