@@ -14,6 +14,11 @@ export const Layout = ({ children }) => {
           <a>V2 - Object useGesture</a>
         </Link>
       </Box>
+      <Box preset={Box.toolButtonPreset}>
+        <Link href="/v3">
+          <a>V3</a>
+        </Link>
+      </Box>
 
       <Box marginTop="10px" />
 
