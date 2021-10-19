@@ -26,7 +26,7 @@ export const Layout = ({ children }) => {
         style={{
           padding: "20px",
           borderRadius: "6px",
-          border: "1px solid #483D8B",
+          // border: "1px solid #483D8B",
         }}
       >
         {children}
