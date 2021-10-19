@@ -20,29 +20,33 @@ export default function App() {
 }
 
 const AnimatedStage = animated(Stage);
+const DEFAULT_STAGE_SCALE = 1;
 
 export const DrawingTool = () => {
   const stageWrapperRef = React.useRef(null);
   const stageRef = React.useRef(null);
   const isPinchingCanvas = React.useRef(false);
   const [isDraggingShape, setIsDraggingShape] = React.useState(false);
+
   const [bounds, setBounds] = React.useState({
-    left: 0,
-    right: STAGE_WIDTH,
-    top: 0,
-    bottom: STAGE_HEIGHT,
+    left: -50,
+    right: 50,
+    top: -50,
+    bottom: 50,
   });
-  const [stageScale, setStageScale] = React.useState(1);
+
+  const [stageScale, setStageScale] = React.useState(DEFAULT_STAGE_SCALE);
 
   const [styles, api] = useSpring(() => ({
     x: 0,
     y: 0,
-    scale: { x: 1, y: 1 },
+    scale: { x: stageScale, y: stageScale },
   }));
 
   React.useEffect(() => {
-    const stage = stageRef.current;
-  }, [stageScale, stageRef]);
+    const newBounds = calculateBounds({ stageScale });
+    setBounds(newBounds);
+  }, [stageScale]);
 
   useGesture(
     {
@@ -83,7 +87,6 @@ export const DrawingTool = () => {
         if (!isDraggingShape) {
           api.start({ x: options.offset[0] });
           api.start({ y: options.offset[1] });
-          console.log(options.offset);
         }
       },
       onPinch: (options) => {
@@ -94,28 +97,40 @@ export const DrawingTool = () => {
           });
 
           setStageScale(result.scale);
+
+          let x = result.position.x;
+          let y = result.position.y;
+
+          const newBounds = calculateBounds({ stageScale });
+          if (stageScale < 1) {
+            if (x < newBounds.left) x = newBounds.left;
+            if (y < newBounds.top) y = newBounds.top;
+          }
+
           api.start({
-            x: result.position.x,
-            y: result.position.y,
+            x,
+            y,
             scale: { x: result.scale, y: result.scale },
           });
         }
       },
       onPinchEnd: () => {
         isPinchingCanvas.current = false;
+        const shape = stageRef.current;
+        console.log(shape.position());
       },
     },
     {
       target: stageRef,
-      // transform: ([x, y]) => [x, y],
       drag: {
-        bounds: { left: -50, top: -50, right: 0, bottom: 0 },
+        bounds: bounds,
         rubberband: true,
         from: () => [styles.x.get(), styles.y.get()],
       },
       pinch: {
-        scaleBounds: { max: 1.5, min: 0.5 },
+        scaleBounds: { max: 1.5, min: 0.7 },
         rubberband: true,
+        distanceBounds: { min: 0 },
       },
     }
   );
@@ -187,8 +202,6 @@ const RectNode = ({
   useGesture(
     {
       onDrag: (options) => {
-        console.log(stageScale);
-        console.log(options.offset);
         api.start({ x: options.offset[0], y: options.offset[1] });
       },
       onPinch: (options) => {
@@ -227,11 +240,9 @@ function calculatePinchingCanvas({ stage, gestureOptions }) {
     x: (pointer.x - stage.x()) / oldScale,
     y: (pointer.y - stage.y()) / oldScale,
   };
-
-  const deltaX = gestureOptions.delta[0];
-
-  const scaleBy = 1.01;
-  // const newScale = deltaX > 0 ? oldScale * scaleBy : oldScale / scaleBy;
+  // const deltaX = gestureOptions.delta[0];
+  // const scaleBy = 1.01;
+  // // const newScale = deltaX > 0 ? oldScale * scaleBy : oldScale / scaleBy;
   const newScale = gestureOptions.offset[0];
 
   var newPos = {
@@ -240,4 +251,37 @@ function calculatePinchingCanvas({ stage, gestureOptions }) {
   };
 
   return { position: newPos, scale: newScale };
+}
+
+function calculateBounds({ stageScale }) {
+  let bounds = {
+    left: -50,
+    right: 50,
+    top: -50,
+    bottom: 50,
+  };
+  if (stageScale < 1) {
+    const widthDelta = STAGE_WIDTH - STAGE_WIDTH * stageScale;
+    const heightDelta = STAGE_HEIGHT - STAGE_HEIGHT * stageScale;
+    const relativeOffset = 50 * stageScale;
+    bounds = {
+      left: -relativeOffset,
+      top: -relativeOffset,
+      right: widthDelta + relativeOffset,
+      bottom: heightDelta + relativeOffset,
+    };
+  } else if (stageScale > 1) {
+    const widthDelta = STAGE_WIDTH - STAGE_WIDTH * stageScale;
+    const heightDelta = STAGE_HEIGHT - STAGE_HEIGHT * stageScale;
+    const relativeOffset = 50 * stageScale;
+
+    bounds = {
+      left: widthDelta - relativeOffset,
+      right: relativeOffset,
+      top: heightDelta - relativeOffset,
+      bottom: relativeOffset,
+    };
+  }
+
+  return bounds;
 }
