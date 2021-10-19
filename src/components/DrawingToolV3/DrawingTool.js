@@ -19,6 +19,8 @@ export default function App() {
   );
 }
 
+const AnimatedStage = animated(Stage);
+
 export const DrawingTool = () => {
   const stageWrapperRef = React.useRef(null);
   const stageRef = React.useRef(null);
@@ -30,6 +32,17 @@ export const DrawingTool = () => {
     top: 0,
     bottom: STAGE_HEIGHT,
   });
+  const [stageScale, setStageScale] = React.useState(1);
+
+  const [styles, api] = useSpring(() => ({
+    x: 0,
+    y: 0,
+    scale: { x: 1, y: 1 },
+  }));
+
+  React.useEffect(() => {
+    const stage = stageRef.current;
+  }, [stageScale, stageRef]);
 
   useGesture(
     {
@@ -68,22 +81,24 @@ export const DrawingTool = () => {
       },
       onDrag: (options) => {
         if (!isDraggingShape) {
-          const stage = stageRef.current;
-
-          stage.x(stage.x() + options.delta[0]);
-          stage.y(stage.y() + options.delta[1]);
+          api.start({ x: options.offset[0] });
+          api.start({ y: options.offset[1] });
+          console.log(options.offset);
         }
       },
       onPinch: (options) => {
         if (isPinchingCanvas.current) {
-          // Stage interaction
-          const stage = stageRef.current;
           const result = calculatePinchingCanvas({
             stage: stageRef.current,
             gestureOptions: options,
           });
-          stage.position(result.position);
-          stage.scale({ x: result.scale, y: result.scale });
+
+          setStageScale(result.scale);
+          api.start({
+            x: result.position.x,
+            y: result.position.y,
+            scale: { x: result.scale, y: result.scale },
+          });
         }
       },
       onPinchEnd: () => {
@@ -92,6 +107,12 @@ export const DrawingTool = () => {
     },
     {
       target: stageRef,
+      // transform: ([x, y]) => [x, y],
+      drag: {
+        bounds: { left: -50, top: -50, right: 0, bottom: 0 },
+        rubberband: true,
+        from: () => [styles.x.get(), styles.y.get()],
+      },
       pinch: {
         scaleBounds: { max: 1.5, min: 0.5 },
         rubberband: true,
@@ -110,7 +131,12 @@ export const DrawingTool = () => {
           height: `${STAGE_HEIGHT}`,
         }}
       >
-        <Stage ref={stageRef} width={STAGE_WIDTH} height={STAGE_HEIGHT}>
+        <AnimatedStage
+          ref={stageRef}
+          width={STAGE_WIDTH}
+          height={STAGE_HEIGHT}
+          {...styles}
+        >
           <Layer>
             <Rect
               cornerRadius={12}
@@ -121,28 +147,34 @@ export const DrawingTool = () => {
             />
           </Layer>
           <Layer>
-            <RectNode stageWrapperRef={stageWrapperRef} />
             <RectNode
+              stageScale={stageScale}
               stageWrapperRef={stageWrapperRef}
-              initialX={150}
-              initialY={150}
+            />
+            <RectNode
+              stageScale={stageScale}
+              stageWrapperRef={stageWrapperRef}
+              initialX={250}
+              initialY={250}
             />
           </Layer>
-        </Stage>
+        </AnimatedStage>
       </div>
     </div>
   );
 };
 
-const RectNode = ({ stageWrapperRef, initialX, initialY }) => {
+const RectNode = ({
+  stageWrapperRef,
+  initialX = 100,
+  initialY = 100,
+  stageScale,
+}) => {
   const ref = React.useRef(null);
 
   const [style, api] = useSpring(() => ({
-    // from: { x: initialX || 100, y: initialY || 100 },
-    // to: { x: initialX || 100, y: initialY || 100 },
-    x: initialX || 100,
-    y: initialY || 100,
-
+    x: initialX,
+    y: initialY,
     width: 100,
     height: 100,
     scale: { x: 1, y: 1 },
@@ -150,51 +182,33 @@ const RectNode = ({ stageWrapperRef, initialX, initialY }) => {
     offsetX: 50,
     offsetY: 50,
     config: { ...config.wobbly },
-    onChange: (e) => console.log(e.value),
   }));
 
   useGesture(
     {
-      onDragStart: (option) => {
-        // const shape = ref.current;
-        // console.log("------- Shape X", shape.x());
-        // api.start({
-        //   x: shape.x(),
-        //   y: shape.y(),
-        //   reset: true,
-        //   cancel: true,
-        //   immediate: true,
-        // });
-      },
       onDrag: (options) => {
-        const shape = ref.current;
-        console.log("Shape X", shape.x());
-        console.log("Style X", style.x.get());
-        console.log("OFfset", options.offset);
-
-        let x = options.offset[0];
-        let y = options.offset[1];
-
-        api.start({ x, y });
+        console.log(stageScale);
+        console.log(options.offset);
+        api.start({ x: options.offset[0], y: options.offset[1] });
       },
       onPinch: (options) => {
-        // api.start({
-        //   scale: { x: options.offset[0], y: options.offset[0] },
-        //   rotation: options.offset[1],
-        // });
+        api.start({
+          scale: { x: options.offset[0], y: options.offset[0] },
+          rotation: options.offset[1],
+        });
       },
     },
     {
       // https://use-gesture.netlify.app/docs/options/#pointercapture
       // https://use-gesture.netlify.app/docs/options/#pointertouch
-
       drag: {
         pointer: { capture: false, touch: true },
         bounds: { left: 0, right: STAGE_WIDTH, top: 0, bottom: STAGE_HEIGHT },
         rubberband: true,
+        from: () => [style.x.get(), style.y.get()],
       },
       pinch: {
-        pointer: { touch: true, capture: false },
+        pointer: { capture: false, touch: true },
         scaleBounds: { min: 0.5, max: 2 },
         rubberband: true,
       },
