@@ -13,7 +13,6 @@ export default function App() {
   return (
     <div>
       <div>Konva Demo (change index.js for Web Demo)</div>
-
       <DrawingTool />
     </div>
   );
@@ -27,26 +26,24 @@ export const DrawingTool = () => {
   const stageRef = React.useRef(null);
   const isPinchingCanvas = React.useRef(false);
   const [isDraggingShape, setIsDraggingShape] = React.useState(false);
-
-  const [bounds, setBounds] = React.useState({
-    left: -50,
-    right: 50,
-    top: -50,
-    bottom: 50,
-  });
-
+  const [bounds, setBounds] = React.useState(() =>
+    calculateBounds(DEFAULT_STAGE_SCALE)
+  );
   const [stageScale, setStageScale] = React.useState(DEFAULT_STAGE_SCALE);
+
+  //
+  //
+  React.useEffect(() => {
+    const newBounds = calculateBounds({ stageScale });
+    setBounds(newBounds);
+  }, [stageScale]);
 
   const [styles, api] = useSpring(() => ({
     x: 0,
     y: 0,
     scale: { x: stageScale, y: stageScale },
+    config: config.wobbly,
   }));
-
-  React.useEffect(() => {
-    const newBounds = calculateBounds({ stageScale });
-    setBounds(newBounds);
-  }, [stageScale]);
 
   useGesture(
     {
@@ -100,7 +97,10 @@ export const DrawingTool = () => {
 
           let x = result.position.x;
           let y = result.position.y;
-
+          // TODO: Document better. This because the 'bounds' of dragging won't
+          // work here, where we don't use 'offset' for setting the new 'x' and 'y'.
+          // Therefore we need to clamp manually the new position (after the pinching)
+          // We only observe this issues when zooming out and on the left /top corner
           const newBounds = calculateBounds({ stageScale });
           if (stageScale < 1) {
             if (x < newBounds.left) x = newBounds.left;
@@ -240,9 +240,7 @@ function calculatePinchingCanvas({ stage, gestureOptions }) {
     x: (pointer.x - stage.x()) / oldScale,
     y: (pointer.y - stage.y()) / oldScale,
   };
-  // const deltaX = gestureOptions.delta[0];
-  // const scaleBy = 1.01;
-  // // const newScale = deltaX > 0 ? oldScale * scaleBy : oldScale / scaleBy;
+
   const newScale = gestureOptions.offset[0];
 
   var newPos = {
